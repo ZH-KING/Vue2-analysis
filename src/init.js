@@ -5,7 +5,7 @@ import { initState } from "./state";
  * @Author: JLDiao
  * @Date: 2022-09-07 16:39:18
  * @LastEditors: ***
- * @LastEditTime: 2022-09-08 15:04:16
+ * @LastEditTime: 2022-09-09 16:50:17
  * @FilePath: \vue2-rollup\src\init.js
  * @Description: 
  * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -46,8 +46,8 @@ export function initMixin(Vue){
                 opts.render = render;
             }
         }
-        
-
+        // 组件的挂载
+        mountComponent(vm, el)
     }
 }
 

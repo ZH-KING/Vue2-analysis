@@ -4,15 +4,194 @@
   (global = typeof globalThis !== 'undefined' ? globalThis : global || self, global.Vue = factory());
 })(this, (function () { 'use strict';
 
+  function _typeof(obj) {
+    "@babel/helpers - typeof";
+
+    return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) {
+      return typeof obj;
+    } : function (obj) {
+      return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
+    }, _typeof(obj);
+  }
+
+  function _classCallCheck(instance, Constructor) {
+    if (!(instance instanceof Constructor)) {
+      throw new TypeError("Cannot call a class as a function");
+    }
+  }
+
+  function _defineProperties(target, props) {
+    for (var i = 0; i < props.length; i++) {
+      var descriptor = props[i];
+      descriptor.enumerable = descriptor.enumerable || false;
+      descriptor.configurable = true;
+      if ("value" in descriptor) descriptor.writable = true;
+      Object.defineProperty(target, descriptor.key, descriptor);
+    }
+  }
+
+  function _createClass(Constructor, protoProps, staticProps) {
+    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
+    if (staticProps) _defineProperties(Constructor, staticProps);
+    Object.defineProperty(Constructor, "prototype", {
+      writable: false
+    });
+    return Constructor;
+  }
+
+  function _slicedToArray(arr, i) {
+    return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest();
+  }
+
+  function _arrayWithHoles(arr) {
+    if (Array.isArray(arr)) return arr;
+  }
+
+  function _iterableToArrayLimit(arr, i) {
+    var _i = arr == null ? null : typeof Symbol !== "undefined" && arr[Symbol.iterator] || arr["@@iterator"];
+
+    if (_i == null) return;
+    var _arr = [];
+    var _n = true;
+    var _d = false;
+
+    var _s, _e;
+
+    try {
+      for (_i = _i.call(arr); !(_n = (_s = _i.next()).done); _n = true) {
+        _arr.push(_s.value);
+
+        if (i && _arr.length === i) break;
+      }
+    } catch (err) {
+      _d = true;
+      _e = err;
+    } finally {
+      try {
+        if (!_n && _i["return"] != null) _i["return"]();
+      } finally {
+        if (_d) throw _e;
+      }
+    }
+
+    return _arr;
+  }
+
+  function _unsupportedIterableToArray(o, minLen) {
+    if (!o) return;
+    if (typeof o === "string") return _arrayLikeToArray(o, minLen);
+    var n = Object.prototype.toString.call(o).slice(8, -1);
+    if (n === "Object" && o.constructor) n = o.constructor.name;
+    if (n === "Map" || n === "Set") return Array.from(o);
+    if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen);
+  }
+
+  function _arrayLikeToArray(arr, len) {
+    if (len == null || len > arr.length) len = arr.length;
+
+    for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i];
+
+    return arr2;
+  }
+
+  function _nonIterableRest() {
+    throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method.");
+  }
+
   /*
    * @Author: JLDiao
-   * @Date: 2022-09-08 14:54:51
+   * @Date: 2022-09-09 13:58:03
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-09 11:25:43
-   * @FilePath: \vue2-rollup\src\compiler\index.js
+   * @LastEditTime: 2022-09-09 16:44:25
+   * @FilePath: \vue2-rollup\src\compiler\generate.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
    */
+  var defaultTagRE = /\{\{((?:.|\r?\n)+?)\}\}/g; // 匹配花括号 {{  }}；捕获花括号里面的内容
+
+  function genProps(attrs) {
+    var str = '';
+
+    for (var i = 0; i < attrs.length; i++) {
+      var attr = attrs[i]; // 如果属性为 style 时，转化为 style:{a:b,c:d} 格式
+
+      if (attr.name === 'style') {
+        (function () {
+          var obj = {};
+          attr.value.split(";").forEach(function (item) {
+            var _item$split = item.split(":"),
+                _item$split2 = _slicedToArray(_item$split, 2),
+                key = _item$split2[0],
+                value = _item$split2[1];
+
+            obj[key] = value;
+          });
+          attr.value = obj;
+        })();
+      } // 结果变为 a:b,c:d,...
+
+
+      str += "".concat(attr.name, ":").concat(JSON.stringify(attr.value), ",");
+    } // 删掉多余的逗号
+
+
+    return "{".concat(str.slice(0, -1), "}");
+  }
+
+  function gen(node) {
+    if (node.type === 1) {
+      return codegen(node);
+    } else {
+      // 如果是纯文本
+      var text = node.text;
+
+      if (!defaultTagRE.test(text)) {
+        return "_v(".concat(JSON.stringify(text), ")");
+      } else {
+        var tokens = [];
+        var match, index; // 正则是全局模式 每次需要重置正则的lastIndex属性，不然会引发匹配bug（defaultTagRE.exec()匹配完一次后，再次匹配为null，需要重置lastIndex）
+
+        defaultTagRE.lastIndex = 0;
+        var lastIndex = 0;
+
+        while (match = defaultTagRE.exec(text)) {
+          // 匹配的位置
+          index = match.index; // 放入文本值  {{name}}  hello {{age}}  取hello放入tokens
+
+          if (index > lastIndex) {
+            tokens.push(JSON.stringify(text.slice(lastIndex, index)));
+          } // tokens中放入变量
+
+
+          tokens.push("_s(".concat(match[1].trim(), ")")); // 记录 }} 结束的位置
+
+          lastIndex = index + match[0].length;
+        } // 如果匹配完了花括号，text里面还有剩余的普通文本，那么继续push到tokens
+
+
+        if (lastIndex < text.length) {
+          tokens.push(JSON.stringify(text.slice(lastIndex)));
+        }
+
+        return "_v(".concat(tokens.join("+"), ")");
+      }
+    }
+  }
+
+  function genChildren(children) {
+    if (children) {
+      return children.map(function (child) {
+        return gen(child);
+      }).join(",");
+    }
+  }
+
+  function codegen(ast) {
+    var children = genChildren(ast.children);
+    var code = "_c('".concat(ast.tag, "',").concat(ast.attrs.length > 0 ? genProps(ast.attrs) : null).concat(ast.children.length > 0 ? ",".concat(children) : '', ")");
+    return code;
+  }
+
   // 以下为vue源码的正则
   var ncname = "[a-zA-Z_][\\-\\.0-9_a-zA-Z]*"; //匹配标签名；形如 abc-123
 
@@ -25,11 +204,6 @@
   var endTag = new RegExp("^<\\/".concat(qnameCapture, "[^>]*>")); // 匹配结束标签 如 </abc-123> 捕获里面的标签名
 
   var attribute = /^\s*([^\s"'<>\/=]+)(?:\s*(=)\s*(?:"([^"]*)"+|'([^']*)'+|([^\s"'=<>`]+)))?/; // 匹配属性  形如 id="app"
-
-  function compileToFunction(template) {
-    //1、将template转成AST语法树：AST用来描述代码本身形成树结构，不仅可以描述html，也能描述css以及js语法
-    parseHTML(template); //2、生成render方法
-  }
 
   function parseHTML(template) {
     var ELEMENT_TYPE = 1;
@@ -168,43 +342,33 @@
       }
     }
 
-    console.log(root);
     return root;
   }
 
-  function _typeof(obj) {
-    "@babel/helpers - typeof";
+  /*
+   * @Author: JLDiao
+   * @Date: 2022-09-08 14:54:51
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-09 16:47:49
+   * @FilePath: \vue2-rollup\src\compiler\index.js
+   * @Description: 
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+   */
+  function compileToFunction(template) {
+    // 1、将template转成AST语法树：AST用来描述代码本身形成树结构，不仅可以描述html，也能描述css以及js语法
+    var ast = parseHTML(template);
+    /**
+     * 2、通过AST，重新生成代码
+     * 生成的代码需要跟render函数一样
+     * 类似 _c('div',{id: "app"},_c('div',undefined,_v(_s(name)),_c('span',undefined,_v(_s(age))))
+     * _c代表创建元素 _v代表创建文本 _s代表变量
+     */
 
-    return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) {
-      return typeof obj;
-    } : function (obj) {
-      return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj;
-    }, _typeof(obj);
-  }
+    var code = codegen(ast); // 模板引擎的实现原理就是 with + new Function
 
-  function _classCallCheck(instance, Constructor) {
-    if (!(instance instanceof Constructor)) {
-      throw new TypeError("Cannot call a class as a function");
-    }
-  }
-
-  function _defineProperties(target, props) {
-    for (var i = 0; i < props.length; i++) {
-      var descriptor = props[i];
-      descriptor.enumerable = descriptor.enumerable || false;
-      descriptor.configurable = true;
-      if ("value" in descriptor) descriptor.writable = true;
-      Object.defineProperty(target, descriptor.key, descriptor);
-    }
-  }
-
-  function _createClass(Constructor, protoProps, staticProps) {
-    if (protoProps) _defineProperties(Constructor.prototype, protoProps);
-    if (staticProps) _defineProperties(Constructor, staticProps);
-    Object.defineProperty(Constructor, "prototype", {
-      writable: false
-    });
-    return Constructor;
+    code = "with(this){return ".concat(code, "}");
+    var render = new Function(code);
+    return render;
   }
 
   /*
@@ -389,7 +553,7 @@
    * @Author: JLDiao
    * @Date: 2022-09-07 16:39:18
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-08 15:04:16
+   * @LastEditTime: 2022-09-09 16:50:17
    * @FilePath: \vue2-rollup\src\init.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -434,7 +598,10 @@
           var render = compileToFunction(template);
           opts.render = render;
         }
-      }
+      } // 组件的挂载
+
+
+      mountComponent(vm, el);
     };
   }
 
@@ -442,7 +609,7 @@
    * @Author: JLDiao
    * @Date: 2022-09-07 16:11:59
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-07 16:42:34
+   * @LastEditTime: 2022-09-09 16:54:58
    * @FilePath: \vue2-rollup\src\index.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -453,6 +620,7 @@
   }
 
   initMixin(Vue);
+  initLifeCycle(Vue);
 
   return Vue;
 
