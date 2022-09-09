@@ -1,0 +1,42 @@
+<!--
+ * @Author: JLDiao
+ * @Date: 2022-09-07 16:22:38
+ * @LastEditors: ***
+ * @LastEditTime: 2022-09-09 11:38:59
+ * @FilePath: \vue2-rollup\public\index.html
+ * @Description: 
+ * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div id="app">
+        <div>{{name}}</div>
+        <span>{{age}}</span>
+    </div>
+    <script src="../dist/vue.js"></script>
+    <script>
+        var vm = new Vue({
+            data(){
+                return {
+                    name: 'zhangsan',
+                    age: 18,
+                    like: ['apple', 'orange', {x: 1}],
+                    address: {
+                        a: 1,
+                        b: 2
+                    }
+                }
+            },
+            // template: '<div>hello</div>',
+        })
+        vm.$mount("#app")
+    </script>
+</body>
+</html>

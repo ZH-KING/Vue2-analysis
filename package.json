@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "serve": "cross-env ENV=development rollup -c -w",
+    "dev": "rollup -cw"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.19.0",
+    "@babel/preset-env": "^7.19.0",
+    "@rollup/plugin-node-resolve": "^14.0.0",
+    "babel-eslint": "^10.1.0",
+    "rollup": "^2.79.0",
+    "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-serve": "^2.0.1"
+  }
+}
