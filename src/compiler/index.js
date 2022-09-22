@@ -2,7 +2,7 @@
  * @Author: JLDiao
  * @Date: 2022-09-08 14:54:51
  * @LastEditors: ***
- * @LastEditTime: 2022-09-09 16:47:49
+ * @LastEditTime: 2022-09-09 17:38:52
  * @FilePath: \vue2-rollup\src\compiler\index.js
  * @Description: 
  * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -25,5 +25,6 @@ export function compileToFunction(template){
     // 模板引擎的实现原理就是 with + new Function
     code = `with(this){return ${code}}`
     let render = new Function(code)
+    
     return render
 }

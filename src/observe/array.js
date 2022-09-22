@@ -2,7 +2,7 @@
  * @Author: JLDiao
  * @Date: 2022-09-08 13:40:22
  * @LastEditors: ***
- * @LastEditTime: 2022-09-08 14:19:28
+ * @LastEditTime: 2022-09-14 17:32:48
  * @FilePath: \vue2-rollup\src\observe\array.js
  * @Description: 
  * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -46,7 +46,9 @@ methods.forEach(method=>{
         if(inserted){
             ob.observeArray(inserted)
         }
-        console.log("method", ob)
+
+        ob.dep.notify()
+        
         return result
     }
 })

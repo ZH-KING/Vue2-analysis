@@ -1,11 +1,13 @@
 import { compileToFunction } from "./compiler";
 import { initState } from "./state";
+import { callHook, mountComponent } from "./lifecycle"
+import { mergeOptions } from "./utils";
 
 /*
  * @Author: JLDiao
  * @Date: 2022-09-07 16:39:18
  * @LastEditors: ***
- * @LastEditTime: 2022-09-09 16:50:17
+ * @LastEditTime: 2022-09-14 15:42:26
  * @FilePath: \vue2-rollup\src\init.js
  * @Description: 
  * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -14,9 +16,15 @@ export function initMixin(Vue){
     Vue.prototype._init = function(options){
         const vm = this;
         // 在实例上添加 $options 属性
-        vm.$options = options;
+        vm.$options = mergeOptions(this.constructor.options, options);
+        
+        callHook(vm, 'beforeCreate')
         // 初始化状态，包括initProps、initData、initMethod、initComputed、initWatch等
         initState(vm)
+
+        callHook(vm, 'created')
+
+
         // 挂载数据
         if(options.el){
             vm.$mount(options.el)

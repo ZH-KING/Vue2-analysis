@@ -100,6 +100,80 @@
 
   /*
    * @Author: JLDiao
+   * @Date: 2022-09-07 16:56:24
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-14 15:25:15
+   * @FilePath: \vue2-rollup\src\utils\index.js
+   * @Description:
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved.
+   */
+  function isFunction(val) {
+    return typeof val === "function";
+  }
+  function isObject(val) {
+    return _typeof(val) === "object";
+  }
+  var strats = {};
+  var LIFECYCLE = ["beforeCreate", "created"];
+  LIFECYCLE.forEach(function (hook) {
+    strats[hook] = function (p, c) {
+      if (c) {
+        if (p) {
+          return p.concat(c);
+        } else {
+          return [c];
+        }
+      } else {
+        return p;
+      }
+    };
+  });
+  function mergeOptions(parent, child) {
+    var options = {};
+
+    for (var key in parent) {
+      mergeField(key);
+    }
+
+    for (var _key in child) {
+      if (!parent.hasOwnProperty(_key)) {
+        mergeField(_key);
+      }
+    }
+
+    function mergeField(key) {
+      if (strats[key]) {
+        options[key] = strats[key](parent[key], child[key]);
+      } else {
+        options[key] = child[key] || parent[key];
+      }
+    }
+
+    return options;
+  }
+
+  /*
+   * @Author: JLDiao
+   * @Date: 2022-09-14 14:26:59
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-14 15:25:09
+   * @FilePath: \vue2-rollup\src\globalApi\index.js
+   * @Description:
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved.
+   */
+
+  function initGlobalApi(Vue) {
+    Vue.options = {};
+
+    Vue.mixin = function (mixin) {
+      // 我们期望将用户的选项和全局的options进行合并
+      this.options = mergeOptions(this.options, mixin);
+      return this;
+    };
+  }
+
+  /*
+   * @Author: JLDiao
    * @Date: 2022-09-09 13:58:03
    * @LastEditors: ***
    * @LastEditTime: 2022-09-09 16:44:25
@@ -349,7 +423,7 @@
    * @Author: JLDiao
    * @Date: 2022-09-08 14:54:51
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-09 16:47:49
+   * @LastEditTime: 2022-09-09 17:38:52
    * @FilePath: \vue2-rollup\src\compiler\index.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -373,25 +447,9 @@
 
   /*
    * @Author: JLDiao
-   * @Date: 2022-09-07 16:56:24
-   * @LastEditors: ***
-   * @LastEditTime: 2022-09-07 17:14:13
-   * @FilePath: \vue2-rollup\src\utils\index.js
-   * @Description: 
-   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
-   */
-  function isFunction(val) {
-    return typeof val === 'function';
-  }
-  function isObject(val) {
-    return _typeof(val) === 'object';
-  }
-
-  /*
-   * @Author: JLDiao
    * @Date: 2022-09-08 13:40:22
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-08 14:19:28
+   * @LastEditTime: 2022-09-14 17:32:48
    * @FilePath: \vue2-rollup\src\observe\array.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -433,16 +491,71 @@
         ob.observeArray(inserted);
       }
 
-      console.log("method", ob);
+      ob.dep.notify();
       return result;
     };
   });
+
+  /*
+   * @Author: JLDiao
+   * @Date: 2022-09-13 15:41:25
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-14 18:00:59
+   * @FilePath: \vue2-rollup\src\observe\dep.js
+   * @Description: 
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+   */
+  var id$1 = 0;
+
+  var Dep = /*#__PURE__*/function () {
+    function Dep() {
+      _classCallCheck(this, Dep);
+
+      this.id = id$1++; // 属性的dep要收集watcher
+
+      this.subs = []; // 这里存放着当前属性对应的watcher有哪些
+    }
+
+    _createClass(Dep, [{
+      key: "depend",
+      value: function depend() {
+        Dep.target.addDep(this);
+      }
+    }, {
+      key: "addSub",
+      value: function addSub(watcher) {
+        this.subs.push(watcher);
+      }
+    }, {
+      key: "notify",
+      value: function notify() {
+        this.subs.forEach(function (watcher) {
+          return watcher.update();
+        });
+      }
+    }]);
+
+    return Dep;
+  }();
+
+  Dep.target = null;
+  var stack = [];
+  function pushTarget(watcher) {
+    stack.push(watcher);
+    Dep.target = watcher;
+  }
+  function popTarget() {
+    stack.pop();
+    Dep.target = stack[stack.length - 1];
+  }
 
   var Observer = /*#__PURE__*/function () {
     function Observer(data) {
       _classCallCheck(this, Observer);
 
-      // 将__ob__变成不可枚举（循环的时候无法获取）
+      // data可以是数组也可以是对象
+      this.dep = new Dep(); // 将__ob__变成不可枚举（循环的时候无法获取）
+
       Object.defineProperty(data, '__ob__', {
         value: this,
         enumerable: false
@@ -477,12 +590,36 @@
     return Observer;
   }();
 
+  function dependArray(value) {
+    for (var i = 0; i < value.length; i++) {
+      var current = value[i];
+      current.__ob__ && current.__ob__.dep.depend();
+
+      if (Array.isArray(current)) {
+        dependArray(current);
+      }
+    }
+  }
+
   function defineReactive(data, key, value) {
     // 对深层次对象进行递归处理
-    observe(value); // 重写对象，给每个属性添加get和set
+    var childOb = observe(value);
+    var dep = new Dep(); // 重写对象，给每个属性添加get和set
 
     Object.defineProperty(data, key, {
       get: function get() {
+        if (Dep.target) {
+          dep.depend();
+
+          if (childOb) {
+            childOb.dep.depend();
+
+            if (Array.isArray(value)) {
+              dependArray(value);
+            }
+          }
+        }
+
         return value;
       },
       set: function set(newVal) {
@@ -490,6 +627,7 @@
 
         observe(newVal);
         value = newVal;
+        dep.notify();
       }
     });
   }
@@ -551,9 +689,293 @@
 
   /*
    * @Author: JLDiao
+   * @Date: 2022-09-13 15:27:50
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-14 18:01:50
+   * @FilePath: \vue2-rollup\src\observe\watcher.js
+   * @Description: 
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+   */
+
+  var id = 0;
+
+  var Watcher = /*#__PURE__*/function () {
+    function Watcher(vm, fn, options) {
+      _classCallCheck(this, Watcher);
+
+      this.id = id++;
+      this.renderWatcher = options;
+      this.getter = fn;
+      this.deps = [];
+      this.depsIds = new Set();
+      this.get();
+    }
+
+    _createClass(Watcher, [{
+      key: "addDep",
+      value: function addDep(dep) {
+        var id = dep.id;
+
+        if (!this.depsIds.has(id)) {
+          this.deps.push(dep);
+          this.depsIds.add(id);
+          dep.addSub(this);
+        }
+      }
+    }, {
+      key: "get",
+      value: function get() {
+        pushTarget(this);
+        this.getter();
+        popTarget(); // 渲染完毕后清空
+      }
+    }, {
+      key: "update",
+      value: function update() {
+        queueWatcher(this);
+      }
+    }, {
+      key: "run",
+      value: function run() {
+        this.get();
+      }
+    }]);
+
+    return Watcher;
+  }();
+  /**
+   * @param {Array} queue watcher队列
+   * @param {*} has watcher 的id集合
+   */
+
+
+  var queue = [];
+  var has = {};
+  var pending = false; // 防抖
+
+  function flushSchedulerQueue() {
+    var flushQueue = queue.slice(0);
+    queue = [];
+    has = {};
+    pending = false;
+    flushQueue.forEach(function (q) {
+      return q.run();
+    });
+  }
+
+  function queueWatcher(watcher) {
+    var id = watcher.id;
+
+    if (!has[id]) {
+      queue.push(watcher);
+      has[id] = true;
+
+      if (!pending) {
+        nextTick(flushSchedulerQueue);
+        pending = true;
+      }
+    }
+  }
+
+  var callback = [];
+  var waiting = false;
+
+  function flushCallbacks() {
+    var cbs = callback.slice(0);
+    waiting = false;
+    callback = [];
+    cbs.forEach(function (cb) {
+      return cb();
+    });
+  } // nextTick 没有直接使用某个api 而是采用优雅降级的方式
+  // 内部先采用Promise（ie不兼容） MutationObserver（h5的api） ie专享的setImmediate  最后是setTimeout
+  // let timerFunc;
+  // if(Promise){
+  //     timerFunc = ()=>{
+  //         Promise.resolve().then(flushCallbacks)
+  //     }
+  // }else if(MutationObserver){
+  //     let observer = new MutationObserver(flushCallbacks)
+  //     let textNode = document.createTextNode(1)
+  //     observer.observe(textNode,{
+  //         characterData: true
+  //     })
+  //     timerFunc = ()=>{
+  //         textNode.textContent = 2
+  //     }
+  // }else if(setImmediate){
+  //     timerFunc = ()=>{
+  //         setImmediate(flushCallbacks)
+  //     }
+  // }else{
+  //     timerFunc = ()=>{
+  //         setTimeout(flushCallbacks)
+  //     }
+  // }
+  // 改进后的不需要兼容ie了 直接使用Promise
+
+
+  function nextTick(cb) {
+    callback.push(cb);
+
+    if (!waiting) {
+      // timerFunc()
+      Promise.resolve().then(flushCallbacks);
+      waiting = true;
+    }
+  }
+
+  /*
+   * @Author: JLDiao
+   * @Date: 2022-09-13 10:46:16
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-13 14:19:14
+   * @FilePath: \vue2-rollup\src\vdom\index.js
+   * @Description: 
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+   */
+  function createElementVnode(vm, tag, data) {
+    if (data === null) {
+      data = {};
+    }
+
+    var key = data.key;
+
+    if (key) {
+      delete data.key;
+    }
+
+    for (var _len = arguments.length, children = new Array(_len > 3 ? _len - 3 : 0), _key = 3; _key < _len; _key++) {
+      children[_key - 3] = arguments[_key];
+    }
+
+    return vnode(vm, tag, key, data, children);
+  }
+  function createTextVnode(vm, text) {
+    return vnode(vm, undefined, undefined, undefined, undefined, text);
+  } // 虚拟DOM
+
+  function vnode(vm, tag, key, data, children, text) {
+    return {
+      vm: vm,
+      tag: tag,
+      key: key,
+      data: data,
+      children: children,
+      text: text
+    };
+  }
+
+  /*
+   * @Author: JLDiao
+   * @Date: 2022-09-09 16:51:07
+   * @LastEditors: ***
+   * @LastEditTime: 2022-09-14 15:33:14
+   * @FilePath: \vue2-rollup\src\lifecycle.js
+   * @Description: 
+   * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
+   */
+
+  function createElm(vnode) {
+    var tag = vnode.tag,
+        data = vnode.data,
+        children = vnode.children,
+        text = vnode.text;
+
+    if (typeof tag === 'string') {
+      // 标签
+      vnode.el = document.createElement(tag);
+      patchProps(vnode.el, data);
+      children.forEach(function (child) {
+        vnode.el.appendChild(createElm(child));
+      });
+    } else {
+      vnode.el = document.createTextNode(text);
+    }
+
+    return vnode.el;
+  }
+
+  function patchProps(el, props) {
+    for (var key in props) {
+      if (key === 'style') {
+        // style: {color: 'red'; background: 'orange'}
+        for (var styleName in props.style) {
+          el.style[styleName] = props.style[styleName];
+        }
+      } else {
+        el.setAttribute(key, props[key]);
+      }
+    }
+  }
+
+  function patch(oldVNode, vnode) {
+    var isRealElement = oldVNode.nodeType; // isRealElement为真即为 初始渲染
+
+    if (isRealElement) {
+      var elm = oldVNode; // 拿到真是元素
+
+      var parentElm = elm.parentNode; // 拿到父元素
+
+      var newElm = createElm(vnode);
+      parentElm.insertBefore(newElm, elm.nextSibling);
+      parentElm.removeChild(elm); // 删除老节点
+
+      return newElm;
+    }
+  }
+
+  function initLifeCycle(Vue) {
+    Vue.prototype._update = function (vnode) {
+      var vm = this;
+      var el = vm.$el; // patch既有初始化的功能，又有更新
+
+      vm.$el = patch(el, vnode);
+    };
+
+    Vue.prototype._c = function () {
+      return createElementVnode.apply(void 0, [this].concat(Array.prototype.slice.call(arguments)));
+    };
+
+    Vue.prototype._v = function () {
+      return createTextVnode.apply(void 0, [this].concat(Array.prototype.slice.call(arguments)));
+    };
+
+    Vue.prototype._s = function (value) {
+      if (_typeof(value) !== 'object') return value;
+      return JSON.stringify(value);
+    };
+
+    Vue.prototype._render = function () {
+      var vm = this;
+      return vm.$options.render.call(vm);
+    };
+  }
+  function mountComponent(vm, el) {
+    vm.$el = el; // 1、调用render方法产生虚拟节点 虚拟DOM
+
+    var updateComponent = function updateComponent() {
+      vm._update(vm._render());
+    };
+
+    new Watcher(vm, updateComponent, true); // 2、根据虚拟DOM产生真实DOM
+    // 3、插入到el元素中
+  }
+  function callHook(vm, hook) {
+    var handlers = vm.$options[hook];
+
+    if (handlers) {
+      handlers.forEach(function (handler) {
+        return handler.call(vm);
+      });
+    }
+  }
+
+  /*
+   * @Author: JLDiao
    * @Date: 2022-09-07 16:39:18
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-09 16:50:17
+   * @LastEditTime: 2022-09-14 15:42:26
    * @FilePath: \vue2-rollup\src\init.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -563,9 +985,11 @@
     Vue.prototype._init = function (options) {
       var vm = this; // 在实例上添加 $options 属性
 
-      vm.$options = options; // 初始化状态，包括initProps、initData、initMethod、initComputed、initWatch等
+      vm.$options = mergeOptions(this.constructor.options, options);
+      callHook(vm, 'beforeCreate'); // 初始化状态，包括initProps、initData、initMethod、initComputed、initWatch等
 
-      initState(vm); // 挂载数据
+      initState(vm);
+      callHook(vm, 'created'); // 挂载数据
 
       if (options.el) {
         vm.$mount(options.el);
@@ -609,7 +1033,7 @@
    * @Author: JLDiao
    * @Date: 2022-09-07 16:11:59
    * @LastEditors: ***
-   * @LastEditTime: 2022-09-09 16:54:58
+   * @LastEditTime: 2022-09-14 15:17:57
    * @FilePath: \vue2-rollup\src\index.js
    * @Description: 
    * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -619,8 +1043,10 @@
     this._init(options);
   }
 
+  Vue.prototype.$nextTick = nextTick;
   initMixin(Vue);
   initLifeCycle(Vue);
+  initGlobalApi(Vue);
 
   return Vue;
 

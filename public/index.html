@@ -2,7 +2,7 @@
  * @Author: JLDiao
  * @Date: 2022-09-07 16:22:38
  * @LastEditors: ***
- * @LastEditTime: 2022-09-09 16:03:00
+ * @LastEditTime: 2022-09-14 18:02:45
  * @FilePath: \vue2-rollup\public\index.html
  * @Description: 
  * Copyright (c) 2022 by JLDiao, All Rights Reserved. 
@@ -16,29 +16,22 @@
     <title>Document</title>
 </head>
 <body>
-    <div id="app" style="color: red;background: orange">
-        <div style="color:red">
-            {{name}}  hello  {{age}}
-        </div>
-        <span> world </span>
+    <div id="app">
+        {{firstName}}
     </div>
     <script src="../dist/vue.js"></script>
     <script>
         var vm = new Vue({
+            el: '#app',
             data(){
                 return {
-                    name: 'zhangsan',
-                    age: 18,
-                    like: ['apple', 'orange', {x: 1}],
-                    address: {
-                        a: 1,
-                        b: 2
-                    }
+                    firstName: '哇'
                 }
             },
-            // template: '<div>hello</div>',
         })
-        vm.$mount("#app")
+        setTimeout(()=>{
+            vm.firstName = 'xxx'
+        }, 1000)
     </script>
 </body>
 </html>
